@@ -18,9 +18,13 @@ import org.fog.utils.FogUtils;
  *
  */
 public class AppModule extends PowerVm{
-
+	// 应用程序模块名
 	private String name;
+
+	// 应用程序模块所属的应用程序名称
 	private String appId;
+
+	// Map<Pair<模块的输入任务类型inputTupleType, 模块的输出任务类型outputTupleType>, 输入任务和输出任务的数据比率>
 	private Map<Pair<String, String>, SelectivityModel> selectivityMap;
 	
 	/**

@@ -38,18 +38,15 @@ public class FogDevice extends PowerDatacenter {
 
     protected double lockTime;
 
-    /**
-     * ID of the parent Fog Device
-     */
+    // 当前雾设备的上一级雾设备
     protected int parentId;
 
     /**
      * ID of the Controller
      */
     protected int controllerId;
-    /**
-     * IDs of the children Fog devices
-     */
+
+    // 当前雾设备的下一级雾设备
     protected List<Integer> childrenIds;
 
     protected Map<Integer, List<String>> childToOperatorsMap;
