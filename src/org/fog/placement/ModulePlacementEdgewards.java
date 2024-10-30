@@ -22,13 +22,14 @@ public class ModulePlacementEdgewards extends ModulePlacement {
     protected ModuleMapping moduleMapping;
     protected List<Sensor> sensors;
     protected List<Actuator> actuators;
-    protected Map<Integer, Double> currentCpuLoad;
 
-    /**
-     * Stores the current mapping of application modules to fog devices
-     */
+    // Map<雾设备的id, 雾设备当前已经占用的CPU负载>
+    protected Map<Integer, Double> currentCpuLoad;
+    // Map<雾设备的id, 放置在该雾设备上的应用程序模块集合>
     protected Map<Integer, List<String>> currentModuleMap;
+    // Map<雾设备的id, Map<放置在该雾设备上的应用程序模块, 放置在该雾设备上的应用程序模块所占用的雾设备的CPU资源>>
     protected Map<Integer, Map<String, Double>> currentModuleLoadMap;
+    // Map<雾设备的id, Map<放置在该雾设备上的应用程序模块, 放置在该雾设备上的应用程序模块的实例个数>>
     protected Map<Integer, Map<String, Integer>> currentModuleInstanceNum;
 
     public ModulePlacementEdgewards(List<FogDevice> fogDevices, List<Sensor> sensors, List<Actuator> actuators,
@@ -45,14 +46,14 @@ public class ModulePlacementEdgewards extends ModulePlacement {
         setCurrentModuleLoadMap(new HashMap<Integer, Map<String, Double>>());
         setCurrentModuleInstanceNum(new HashMap<Integer, Map<String, Integer>>());
         for (FogDevice dev : getFogDevices()) {
-            getCurrentCpuLoad().put(dev.getId(), 0.0);
-            getCurrentModuleLoadMap().put(dev.getId(), new HashMap<String, Double>());
-            getCurrentModuleMap().put(dev.getId(), new ArrayList<String>());
-            getCurrentModuleInstanceNum().put(dev.getId(), new HashMap<String, Integer>());
+            currentCpuLoad.put(dev.getId(), 0.0);
+            currentModuleLoadMap.put(dev.getId(), new HashMap<String, Double>());
+            currentModuleMap.put(dev.getId(), new ArrayList<String>());
+            currentModuleInstanceNum.put(dev.getId(), new HashMap<String, Integer>());
         }
 
         mapModules();
-        setModuleInstanceCountMap(getCurrentModuleInstanceNum());
+        setModuleInstanceCountMap(currentModuleInstanceNum);
     }
 
     @Override
@@ -62,13 +63,13 @@ public class ModulePlacementEdgewards extends ModulePlacement {
             // 第一个getModuleMapping是得到ModuleMapping实例，第二个getModuleMapping是得到ModuleMapping实例中的moduleMapping属性
             for (String moduleName : getModuleMapping().getModuleMapping().get(deviceName)) {
                 int deviceId = CloudSim.getEntityId(deviceName);
-                getCurrentModuleMap().get(deviceId).add(moduleName);
-                getCurrentModuleLoadMap().get(deviceId).put(moduleName, 0.0);
-                getCurrentModuleInstanceNum().get(deviceId).put(moduleName, 0);
+                currentModuleMap.get(deviceId).add(moduleName);
+                currentModuleLoadMap.get(deviceId).put(moduleName, 0.0);
+                currentModuleInstanceNum.get(deviceId).put(moduleName, 0);
             }
         }
 
-        // 得到雾设备中从每个叶子节点到根的所有路径
+        // 得到雾设备层级中从每个叶子节点到根的所有路径
         // 例如, 从 m-0-0 到 d-0 到 proxy-server 到 cloud，其中一条路径就是 6 - 5 - 4 - 3
         //      从 m-0-1 到 d-0 到 proxy-server 到 cloud，其中一条路径就是 9 - 5 - 4 - 3 （7 是 s-0-0, 8 是 a-0-0）
         List<List<Integer>> leafToRootPaths = getLeafToRootPaths();
@@ -77,8 +78,8 @@ public class ModulePlacementEdgewards extends ModulePlacement {
             placeModulesInPath(path);
         }
 
-        for (int deviceId : getCurrentModuleMap().keySet()) {
-            for (String module : getCurrentModuleMap().get(deviceId)) {
+        for (int deviceId : currentModuleMap.keySet()) {
+            for (String module : currentModuleMap.get(deviceId)) {
                 createModuleInstanceOnDevice(getApplication().getModuleByName(module), getFogDeviceById(deviceId));
             }
         }
@@ -92,11 +93,12 @@ public class ModulePlacementEdgewards extends ModulePlacement {
      */
     private List<String> getModulesToPlace(List<String> placedModules) {
         Application app = getApplication();
-        List<String> modulesToPlace_1 = new ArrayList<String>();
-        List<String> modulesToPlace = new ArrayList<String>();
+        List<String> modulesToPlace_1 = new ArrayList<String>(); // 还未放置的模块
+        List<String> modulesToPlace = new ArrayList<String>(); // 确定能放置的模块
         for (AppModule module : app.getModules()) {
-            if (!placedModules.contains(module.getName()))
+            if (!placedModules.contains(module.getName())) {
                 modulesToPlace_1.add(module.getName());
+            }
         }
         /*
          * Filtering based on whether modules (to be placed) lower in physical topology are already placed
@@ -105,10 +107,14 @@ public class ModulePlacementEdgewards extends ModulePlacement {
             boolean toBePlaced = true;
 
             for (AppEdge edge : app.getEdges()) {
-                //CHECK IF OUTGOING DOWN EDGES ARE PLACED
+                // 如果边的数据流向是down, 说明在源模块放置之前, 目标模块就需要已经被放置了,
+                // 如果目标模块没有被放置(!placedModules.contains(edge.getDestination())), 那源模块就不能被放置
+                // edge.getSource().equals(moduleName) 就说明当前要处理的模块是某条应用程序边中的源模块
                 if (edge.getSource().equals(moduleName) && edge.getDirection() == Tuple.DOWN && !placedModules.contains(edge.getDestination()))
                     toBePlaced = false;
-                //CHECK IF INCOMING UP EDGES ARE PLACED
+                // 如果边的数据流向是up, 说明在目标模块放置之前, 源模块就需要已经被放置了,
+                // 如果源模块没有被放置(!placedModules.contains(edge.getSource())), 那目标模块就不能被放置
+                // edge.getDestination().equals(moduleName) 就说明当前要处理的模块是某条应用程序边中的目标模块
                 if (edge.getDestination().equals(moduleName) && edge.getDirection() == Tuple.UP && !placedModules.contains(edge.getSource()))
                     toBePlaced = false;
             }
@@ -127,9 +133,11 @@ public class ModulePlacementEdgewards extends ModulePlacement {
         return 0;
     }
 
+    // 对于某条雾设备的叶子节点到根的路径进行应用程序模块的放置
     private void placeModulesInPath(List<Integer> path) {
         if (path.size() == 0) return;
-        List<String> placedModules = new ArrayList<String>();
+        List<String> placedModules = new ArrayList<String>(); // 已经放置的应用模块
+        // Map<应用程序边, 应用程序边的数据传输速率>
         Map<AppEdge, Double> appEdgeToRate = new HashMap<AppEdge, Double>();
 
         /**
@@ -143,7 +151,9 @@ public class ModulePlacementEdgewards extends ModulePlacement {
 
         for (Integer deviceId : path) {
             FogDevice device = getFogDeviceById(deviceId);
+            // 得到和当前雾设备直接关联的所有传感器
             Map<String, Integer> sensorsAssociated = getAssociatedSensors(device);
+            // 得到和当前雾设备直接关联的所有执行器
             Map<String, Integer> actuatorsAssociated = getAssociatedActuators(device);
             placedModules.addAll(sensorsAssociated.keySet()); // ADDING ALL SENSORS TO PLACED LIST
             placedModules.addAll(actuatorsAssociated.keySet()); // ADDING ALL ACTUATORS TO PLACED LIST
@@ -151,6 +161,9 @@ public class ModulePlacementEdgewards extends ModulePlacement {
             /*
              * Setting the rates of application edges emanating from sensors
              */
+            // 这里有点问题，sensorsAssociated 是 Map<传感器传输的任务类型名称tupleType, 对应的传输该任务类型的传感器个数>
+            // AppEdge 的 source 和 destination 表示的是应用程序边的源模块和目标模块名称
+            // 不知道为什么这里就把任务类型名称和模块名称做相等的判断了，虽然在创建Sensor时，tupleType和sensorName设置为相同（在VRGameFog例子中）
             for (String sensor : sensorsAssociated.keySet()) {
                 for (AppEdge edge : getApplication().getEdges()) {
                     if (edge.getSource().equals(sensor)) {
@@ -159,20 +172,20 @@ public class ModulePlacementEdgewards extends ModulePlacement {
                 }
             }
 
-            /*
-             * Updating the AppEdge rates for the entire application based on knowledge so far
-             */
+            // 根据已有的信息，计算出每条应用边的数据传输速率
             boolean changed = true;
             while (changed) {        //Loop runs as long as some new information is added
                 changed = false;
                 Map<AppEdge, Double> rateMap = new HashMap<AppEdge, Double>(appEdgeToRate);
                 for (AppEdge edge : rateMap.keySet()) {
+                    // 得到应用程序边的目标模块
                     AppModule destModule = getApplication().getModuleByName(edge.getDestination());
                     if (destModule == null) continue;
-                    Map<Pair<String, String>, SelectivityModel> map = destModule.getSelectivityMap();
-                    for (Pair<String, String> pair : map.keySet()) {
+                    Map<Pair<String, String>, SelectivityModel> selectivityMap = destModule.getSelectivityMap();
+                    for (Pair<String, String> pair : selectivityMap.keySet()) {
+                        // 这里就是要根据数据的输入输出关系对appEdgeToRate进行填充
                         if (pair.getFirst().equals(edge.getTupleType())) {
-                            double outputRate = appEdgeToRate.get(edge) * map.get(pair).getMeanRate(); // getting mean rate from SelectivityModel
+                            double outputRate = appEdgeToRate.get(edge) * selectivityMap.get(pair).getMeanRate(); // getting mean rate from SelectivityModel
                             AppEdge outputEdge = getApplication().getEdgeMap().get(pair.getSecond());
                             if (!appEdgeToRate.containsKey(outputEdge) || appEdgeToRate.get(outputEdge) != outputRate) {
                                 // if some new information is available
@@ -193,7 +206,8 @@ public class ModulePlacementEdgewards extends ModulePlacement {
                 String moduleName = modulesToPlace.get(0);
                 double totalCpuLoad = 0;
 
-                //IF MODULE IS ALREADY PLACED UPSTREAM, THEN UPDATE THE EXISTING MODULE
+                // 判断要放置的模块是否已经被放置了，若是，则返回模块所在的设备的id, 否则返回-1
+                // 要放置的模块已经被放置的情况：在ModuleMapping类中就已经预设好了
                 int upsteamDeviceId = isPlacedUpstream(moduleName, path);
                 if (upsteamDeviceId > 0) {
                     if (upsteamDeviceId == deviceId) {
@@ -207,7 +221,7 @@ public class ModulePlacementEdgewards extends ModulePlacement {
                                 totalCpuLoad += rate * edge.getTupleCpuLength();
                             }
                         }
-                        if (totalCpuLoad + getCurrentCpuLoad().get(deviceId) > device.getHost().getTotalMips()) {
+                        if (totalCpuLoad + currentCpuLoad.get(deviceId) > device.getHost().getTotalMips()) {
                             Logger.debug("ModulePlacementEdgeward", "Need to shift module " + moduleName + " upstream from device " + device.getName());
                             List<String> _placedOperators = shiftModuleNorth(moduleName, totalCpuLoad, deviceId, modulesToPlace);
                             for (String placedOperator : _placedOperators) {
@@ -216,33 +230,32 @@ public class ModulePlacementEdgewards extends ModulePlacement {
                             }
                         } else {
                             placedModules.add(moduleName);
-                            getCurrentCpuLoad().put(deviceId, getCurrentCpuLoad().get(deviceId) + totalCpuLoad);
-                            getCurrentModuleInstanceNum().get(deviceId).put(moduleName, getCurrentModuleInstanceNum().get(deviceId).get(moduleName) + 1);
+                            currentCpuLoad.put(deviceId, currentCpuLoad.get(deviceId) + totalCpuLoad);
+                            currentModuleInstanceNum.get(deviceId).put(moduleName, currentModuleInstanceNum.get(deviceId).get(moduleName) + 1);
                             Logger.debug("ModulePlacementEdgeward", "AppModule " + moduleName + " can be created on device " + device.getName());
                         }
                     }
                 } else {
-                    // FINDING OUT WHETHER PLACEMENT OF OPERATOR ON DEVICE IS POSSIBLE
+                    // 判断当前设备的资源是否足够放置该应用模块
                     for (AppEdge edge : getApplication().getEdges()) {        // take all incoming edges
                         if (edge.getDestination().equals(moduleName)) {
                             double rate = appEdgeToRate.get(edge);
-                            totalCpuLoad += rate * edge.getTupleCpuLength();
+                            totalCpuLoad += rate * edge.getTupleCpuLength(); // 计算流向这个应用模块的数据量大小（数据量=速率*任务大小）
                         }
                     }
 
-                    if (totalCpuLoad + getCurrentCpuLoad().get(deviceId) > device.getHost().getTotalMips()) {
-                        Logger.debug("ModulePlacementEdgeward", "Placement of operator " + moduleName + "NOT POSSIBLE on device " + device.getName());
+                    if (totalCpuLoad + currentCpuLoad.get(deviceId) > device.getHost().getTotalMips()) {
+                        Logger.debug("ModulePlacementEdgeward", "Placement of operator " + moduleName + " NOT POSSIBLE on device " + device.getName());
                     } else {
                         Logger.debug("ModulePlacementEdgeward", "Placement of operator " + moduleName + " on device " + device.getName() + " successful.");
-                        getCurrentCpuLoad().put(deviceId, totalCpuLoad + getCurrentCpuLoad().get(deviceId));
-                        System.out.println("Placement of operator " + moduleName + " on device " + device.getName() + " successful.");
+                        currentCpuLoad.put(deviceId, totalCpuLoad + currentCpuLoad.get(deviceId));
 
                         if (!currentModuleMap.containsKey(deviceId))
                             currentModuleMap.put(deviceId, new ArrayList<String>());
                         currentModuleMap.get(deviceId).add(moduleName);
                         placedModules.add(moduleName);
                         modulesToPlace = getModulesToPlace(placedModules);
-                        getCurrentModuleLoadMap().get(device.getId()).put(moduleName, totalCpuLoad);
+                        currentModuleLoadMap.get(device.getId()).put(moduleName, totalCpuLoad);
 
                         int max = 1;
                         for (AppEdge edge : getApplication().getEdges()) {
@@ -251,16 +264,12 @@ public class ModulePlacementEdgewards extends ModulePlacement {
                             if (edge.getDestination().equals(moduleName) && sensorsAssociated.containsKey(edge.getSource()))
                                 max = Math.max(sensorsAssociated.get(edge.getSource()), max);
                         }
-                        getCurrentModuleInstanceNum().get(deviceId).put(moduleName, max);
+                        currentModuleInstanceNum.get(deviceId).put(moduleName, max);
                     }
                 }
-
-
                 modulesToPlace.remove(moduleName);
             }
-
         }
-
     }
 
     /**
@@ -271,22 +280,22 @@ public class ModulePlacementEdgewards extends ModulePlacement {
      * @param deviceId
      */
     private List<String> shiftModuleNorth(String moduleName, double cpuLoad, Integer deviceId, List<String> operatorsToPlace) {
-        System.out.println(CloudSim.getEntityName(deviceId) + " is shifting " + moduleName + " north.");
+        Logger.debug("ModulePlacementEdgeward", CloudSim.getEntityName(deviceId) + " is shifting " + moduleName + " north.");
         List<String> modulesToShift = findModulesToShift(moduleName, deviceId);
 
         Map<String, Integer> moduleToNumInstances = new HashMap<String, Integer>(); // Map of number of instances of modules that need to be shifted
         double totalCpuLoad = 0;
         Map<String, Double> loadMap = new HashMap<String, Double>();
         for (String module : modulesToShift) {
-            loadMap.put(module, getCurrentModuleLoadMap().get(deviceId).get(module));
-            moduleToNumInstances.put(module, getCurrentModuleInstanceNum().get(deviceId).get(module) + 1);
-            totalCpuLoad += getCurrentModuleLoadMap().get(deviceId).get(module);
-            getCurrentModuleLoadMap().get(deviceId).remove(module);
-            getCurrentModuleMap().get(deviceId).remove(module);
-            getCurrentModuleInstanceNum().get(deviceId).remove(module);
+            loadMap.put(module, currentModuleLoadMap.get(deviceId).get(module));
+            moduleToNumInstances.put(module, currentModuleInstanceNum.get(deviceId).get(module) + 1);
+            totalCpuLoad += currentModuleLoadMap.get(deviceId).get(module);
+            currentModuleLoadMap.get(deviceId).remove(module);
+            currentModuleMap.get(deviceId).remove(module);
+            currentModuleInstanceNum.get(deviceId).remove(module);
         }
 
-        getCurrentCpuLoad().put(deviceId, getCurrentCpuLoad().get(deviceId) - totalCpuLoad); // change info of current CPU load on device
+        currentCpuLoad.put(deviceId, currentCpuLoad.get(deviceId) - totalCpuLoad); // change info of current CPU load on device
         loadMap.put(moduleName, loadMap.get(moduleName) + cpuLoad);
         totalCpuLoad += cpuLoad;
 
@@ -298,24 +307,24 @@ public class ModulePlacementEdgewards extends ModulePlacement {
                 break;
             }
             FogDevice fogDevice = getFogDeviceById(id);
-            if (getCurrentCpuLoad().get(id) + totalCpuLoad > fogDevice.getHost().getTotalMips()) {
+            if (currentCpuLoad.get(id) + totalCpuLoad > fogDevice.getHost().getTotalMips()) {
                 // Device cannot take up CPU load of incoming modules. Keep searching for device further north.
                 List<String> _modulesToShift = findModulesToShift(modulesToShift, id);    // All modules in _modulesToShift are currently placed on device id
                 double cpuLoadShifted = 0;        // the total CPU load shifted from device id to its parent
                 for (String module : _modulesToShift) {
                     if (!modulesToShift.contains(module)) {
                         // Add information of all newly added modules (to be shifted)
-                        moduleToNumInstances.put(module, getCurrentModuleInstanceNum().get(id).get(module) + moduleToNumInstances.get(module));
-                        loadMap.put(module, getCurrentModuleLoadMap().get(id).get(module));
-                        cpuLoadShifted += getCurrentModuleLoadMap().get(id).get(module);
-                        totalCpuLoad += getCurrentModuleLoadMap().get(id).get(module);
+                        moduleToNumInstances.put(module, currentModuleInstanceNum.get(id).get(module) + moduleToNumInstances.get(module));
+                        loadMap.put(module, currentModuleLoadMap.get(id).get(module));
+                        cpuLoadShifted += currentModuleLoadMap.get(id).get(module);
+                        totalCpuLoad += currentModuleLoadMap.get(id).get(module);
                         // Removing information of all modules (to be shifted north) in device with ID id
-                        getCurrentModuleLoadMap().get(id).remove(module);
-                        getCurrentModuleMap().get(id).remove(module);
-                        getCurrentModuleInstanceNum().get(id).remove(module);
+                        currentModuleLoadMap.get(id).remove(module);
+                        currentModuleMap.get(id).remove(module);
+                        currentModuleInstanceNum.get(id).remove(module);
                     }
                 }
-                getCurrentCpuLoad().put(id, getCurrentCpuLoad().get(id) - cpuLoadShifted); // CPU load on device id gets reduced due to modules shifting northwards
+                currentCpuLoad.put(id, currentCpuLoad.get(id) - cpuLoadShifted); // CPU load on device id gets reduced due to modules shifting northwards
 
                 modulesToShift = _modulesToShift;
                 id = getParentDevice(id); // iterating to parent device
@@ -324,16 +333,16 @@ public class ModulePlacementEdgewards extends ModulePlacement {
                 double totalLoad = 0;
                 for (String module : loadMap.keySet()) {
                     totalLoad += loadMap.get(module);
-                    getCurrentModuleLoadMap().get(id).put(module, loadMap.get(module));
-                    getCurrentModuleMap().get(id).add(module);
+                    currentModuleLoadMap.get(id).put(module, loadMap.get(module));
+                    currentModuleMap.get(id).add(module);
                     String module_ = module;
                     int initialNumInstances = 0;
-                    if (getCurrentModuleInstanceNum().get(id).containsKey(module_))
-                        initialNumInstances = getCurrentModuleInstanceNum().get(id).get(module_);
+                    if (currentModuleInstanceNum.get(id).containsKey(module_))
+                        initialNumInstances = currentModuleInstanceNum.get(id).get(module_);
                     int finalNumInstances = initialNumInstances + moduleToNumInstances.get(module_);
-                    getCurrentModuleInstanceNum().get(id).put(module_, finalNumInstances);
+                    currentModuleInstanceNum.get(id).put(module_, finalNumInstances);
                 }
-                getCurrentCpuLoad().put(id, totalLoad);
+                currentCpuLoad.put(id, totalLoad);
                 operatorsToPlace.removeAll(loadMap.keySet());
                 List<String> placedOperators = new ArrayList<String>();
                 for (String op : loadMap.keySet()) placedOperators.add(op);
@@ -361,11 +370,11 @@ public class ModulePlacementEdgewards extends ModulePlacement {
 		while(changed){ // Keep loop running as long as new information is added.
 			changed = false;
 			for(AppEdge edge : getApplication().getEdges()){
-				
+
 				 * If there is an application edge UP from the module to be shifted to another module in the same device
-				 
-				if(upstreamModules.contains(edge.getSource()) && edge.getDirection()==Tuple.UP && 
-						getCurrentModuleMap().get(deviceId).contains(edge.getDestination()) 
+
+				if(upstreamModules.contains(edge.getSource()) && edge.getDirection()==Tuple.UP &&
+						currentModuleMap.get(deviceId).contains(edge.getDestination())
 						&& !upstreamModules.contains(edge.getDestination())){
 					upstreamModules.add(edge.getDestination());
 					changed = true;
@@ -394,7 +403,7 @@ public class ModulePlacementEdgewards extends ModulePlacement {
              */
             for (AppEdge edge : getApplication().getEdges()) {
                 if (upstreamModules.contains(edge.getSource()) && edge.getDirection() == Tuple.UP &&
-                        getCurrentModuleMap().get(deviceId).contains(edge.getDestination())
+                        currentModuleMap.get(deviceId).contains(edge.getDestination())
                         && !upstreamModules.contains(edge.getDestination())) {
                     upstreamModules.add(edge.getDestination());
                     changed = true;
@@ -419,12 +428,15 @@ public class ModulePlacementEdgewards extends ModulePlacement {
      * @return map from sensor type to number of such sensors
      */
     private Map<String, Integer> getAssociatedSensors(FogDevice device) {
+        // Map<传感器传输的任务类型名称tupleType, 对应的传输该任务类型的传感器个数>
         Map<String, Integer> endpoints = new HashMap<String, Integer>();
         for (Sensor sensor : getSensors()) {
             if (sensor.getGatewayDeviceId() == device.getId()) {
-                if (!endpoints.containsKey(sensor.getTupleType()))
-                    endpoints.put(sensor.getTupleType(), 0);
-                endpoints.put(sensor.getTupleType(), endpoints.get(sensor.getTupleType()) + 1);
+                String tupleType = sensor.getTupleType(); // 任务类型名称
+                if (!endpoints.containsKey(tupleType)) {
+                    endpoints.put(tupleType, 0);
+                }
+                endpoints.put(tupleType, endpoints.get(tupleType) + 1);
             }
         }
         return endpoints;
@@ -437,12 +449,15 @@ public class ModulePlacementEdgewards extends ModulePlacement {
      * @return map from actuator type to number of such sensors
      */
     private Map<String, Integer> getAssociatedActuators(FogDevice device) {
+        // Map<传输给执行器的数据类型名称actuatorType, 对应的得到该数据类型的执行器个数>
         Map<String, Integer> endpoints = new HashMap<String, Integer>();
         for (Actuator actuator : getActuators()) {
             if (actuator.getGatewayDeviceId() == device.getId()) {
-                if (!endpoints.containsKey(actuator.getActuatorType()))
-                    endpoints.put(actuator.getActuatorType(), 0);
-                endpoints.put(actuator.getActuatorType(), endpoints.get(actuator.getActuatorType()) + 1);
+                String actuatorType = actuator.getActuatorType();
+                if (!endpoints.containsKey(actuatorType)) {
+                    endpoints.put(actuatorType, 0);
+                }
+                endpoints.put(actuatorType, endpoints.get(actuatorType) + 1);
             }
         }
         return endpoints;

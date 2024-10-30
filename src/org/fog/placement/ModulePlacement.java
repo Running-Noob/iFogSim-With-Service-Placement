@@ -8,146 +8,145 @@ import org.cloudbus.cloudsim.core.CloudSim;
 import org.fog.application.AppModule;
 import org.fog.application.Application;
 import org.fog.entities.FogDevice;
+import org.fog.utils.Logger;
 
 public abstract class ModulePlacement {
+    public static int ONLY_CLOUD = 1;
+    public static int EDGEWARDS = 2;
+    public static int USER_MAPPING = 3;
 
+    private List<FogDevice> fogDevices;
+    private Application application;
+    private Map<String, List<Integer>> moduleToDeviceMap;
+    private Map<Integer, List<AppModule>> deviceToModuleMap;
+    private Map<Integer, Map<String, Integer>> moduleInstanceCountMap;
+    protected Map<Integer, Map<Integer, List<String>>> modulesOnPath;
+    protected Map<Integer, List<String>> modulesOnDevice;
+    protected Boolean clusteringFeature;
 
-	public static int ONLY_CLOUD = 1;
-	public static int EDGEWARDS = 2;
-	public static int USER_MAPPING = 3;
+    protected abstract void mapModules();
 
-	private List<FogDevice> fogDevices;
-	private Application application;
-	private Map<String, List<Integer>> moduleToDeviceMap;
-	private Map<Integer, List<AppModule>> deviceToModuleMap;
-	private Map<Integer, Map<String, Integer>> moduleInstanceCountMap;
+    protected boolean canBeCreated(FogDevice fogDevice, AppModule module) {
+        return fogDevice.getVmAllocationPolicy().allocateHostForVm(module);
+    }
 
-	protected Map<Integer, Map<Integer,List<String>>> modulesOnPath;
-	protected Map<Integer, List<String>> modulesOnDevice;
-	protected Boolean clusteringFeature;
+    protected int getParentDevice(int fogDeviceId) {
+        return ((FogDevice) CloudSim.getEntity(fogDeviceId)).getParentId();
+    }
 
-	protected abstract void mapModules();
+    protected FogDevice getFogDeviceById(int fogDeviceId) {
+        return (FogDevice) CloudSim.getEntity(fogDeviceId);
+    }
 
-	protected boolean canBeCreated(FogDevice fogDevice, AppModule module){
-		return fogDevice.getVmAllocationPolicy().allocateHostForVm(module);
-	}
+    protected boolean createModuleInstanceOnDevice(AppModule _module, final FogDevice device, int instanceCount) {
+        return false;
+    }
 
-	protected int getParentDevice(int fogDeviceId){
-		return ((FogDevice)CloudSim.getEntity(fogDeviceId)).getParentId();
-	}
+    // 根据 placeModulesInPath 方法中确定的放置信息, 进行实际的应用模块在雾设备上的放置（真正地为应用模块分配计算资源）
+    protected boolean createModuleInstanceOnDevice(AppModule _module, final FogDevice device) {
+        AppModule module = null;
+        if (moduleToDeviceMap.containsKey(_module.getName()))
+            module = new AppModule(_module);
+        else
+            module = _module;
 
-	protected FogDevice getFogDeviceById(int fogDeviceId){
-		return (FogDevice)CloudSim.getEntity(fogDeviceId);
-	}
+        if (canBeCreated(device, module)) {
+            Logger.debug("Creating module " + module.getName() + " on device " + device.getName());
 
-	protected boolean createModuleInstanceOnDevice(AppModule _module, final FogDevice device, int instanceCount){
-		return false;
-	}
+            if (!deviceToModuleMap.containsKey(device.getId()))
+                deviceToModuleMap.put(device.getId(), new ArrayList<AppModule>());
+            deviceToModuleMap.get(device.getId()).add(module);
 
-	protected boolean createModuleInstanceOnDevice(AppModule _module, final FogDevice device){
-		AppModule module = null;
-		if(getModuleToDeviceMap().containsKey(_module.getName()))
-			module = new AppModule(_module);
-		else
-			module = _module;
+            if (!moduleToDeviceMap.containsKey(module.getName()))
+                moduleToDeviceMap.put(module.getName(), new ArrayList<Integer>());
+            moduleToDeviceMap.get(module.getName()).add(device.getId());
+            return true;
+        } else {
+            System.err.println("Module " + module.getName() + " cannot be created on device " + device.getName());
+            System.err.println("Terminating");
+            return false;
+        }
+    }
 
-		if(canBeCreated(device, module)){
-			System.out.println("Creating "+module.getName()+" on device "+device.getName());
+    protected FogDevice getDeviceByName(String deviceName) {
+        for (FogDevice dev : getFogDevices()) {
+            if (dev.getName().equals(deviceName))
+                return dev;
+        }
+        return null;
+    }
 
-			if(!getDeviceToModuleMap().containsKey(device.getId()))
-				getDeviceToModuleMap().put(device.getId(), new ArrayList<AppModule>());
-			getDeviceToModuleMap().get(device.getId()).add(module);
+    protected FogDevice getDeviceById(int id) {
+        for (FogDevice dev : getFogDevices()) {
+            if (dev.getId() == id)
+                return dev;
+        }
+        return null;
+    }
 
-			if(!getModuleToDeviceMap().containsKey(module.getName()))
-				getModuleToDeviceMap().put(module.getName(), new ArrayList<Integer>());
-			getModuleToDeviceMap().get(module.getName()).add(device.getId());
-			return true;
-		} else {
-			System.err.println("Module "+module.getName()+" cannot be created on device "+device.getName());
-			System.err.println("Terminating");
-			return false;
-		}
-	}
+    public List<FogDevice> getFogDevices() {
+        return fogDevices;
+    }
 
-	protected FogDevice getDeviceByName(String deviceName) {
-		for(FogDevice dev : getFogDevices()){
-			if(dev.getName().equals(deviceName))
-				return dev;
-		}
-		return null;
-	}
+    public void setFogDevices(List<FogDevice> fogDevices) {
+        this.fogDevices = fogDevices;
+    }
 
-	protected FogDevice getDeviceById(int id){
-		for(FogDevice dev : getFogDevices()){
-			if(dev.getId() == id)
-				return dev;
-		}
-		return null;
-	}
+    public Application getApplication() {
+        return application;
+    }
 
-	public List<FogDevice> getFogDevices() {
-		return fogDevices;
-	}
+    public void setApplication(Application application) {
+        this.application = application;
+    }
 
-	public void setFogDevices(List<FogDevice> fogDevices) {
-		this.fogDevices = fogDevices;
-	}
+    public Map<String, List<Integer>> getModuleToDeviceMap() {
+        return moduleToDeviceMap;
+    }
 
-	public Application getApplication() {
-		return application;
-	}
+    public void setModuleToDeviceMap(Map<String, List<Integer>> moduleToDeviceMap) {
+        this.moduleToDeviceMap = moduleToDeviceMap;
+    }
 
-	public void setApplication(Application application) {
-		this.application = application;
-	}
+    public Map<Integer, List<AppModule>> getDeviceToModuleMap() {
+        return deviceToModuleMap;
+    }
 
-	public Map<String, List<Integer>> getModuleToDeviceMap() {
-		return moduleToDeviceMap;
-	}
+    public void setDeviceToModuleMap(Map<Integer, List<AppModule>> deviceToModuleMap) {
+        this.deviceToModuleMap = deviceToModuleMap;
+    }
 
-	public void setModuleToDeviceMap(Map<String, List<Integer>> moduleToDeviceMap) {
-		this.moduleToDeviceMap = moduleToDeviceMap;
-	}
+    public Map<Integer, Map<String, Integer>> getModuleInstanceCountMap() {
+        return moduleInstanceCountMap;
+    }
 
-	public Map<Integer, List<AppModule>> getDeviceToModuleMap() {
-		return deviceToModuleMap;
-	}
+    public void setModuleInstanceCountMap(Map<Integer, Map<String, Integer>> moduleInstanceCountMap) {
+        this.moduleInstanceCountMap = moduleInstanceCountMap;
+    }
 
-	public void setDeviceToModuleMap(Map<Integer, List<AppModule>> deviceToModuleMap) {
-		this.deviceToModuleMap = deviceToModuleMap;
-	}
+    public Map<Integer, Map<Integer, List<String>>> getModulesOnPath() {
+        return modulesOnPath;
+    }
 
-	public Map<Integer, Map<String, Integer>> getModuleInstanceCountMap() {
-		return moduleInstanceCountMap;
-	}
+    public void setModulesOnPath(Map<Integer, Map<Integer, List<String>>> modulesOnPath) {
+        this.modulesOnPath = modulesOnPath;
+    }
 
-	public void setModuleInstanceCountMap(Map<Integer, Map<String, Integer>> moduleInstanceCountMap) {
-		this.moduleInstanceCountMap = moduleInstanceCountMap;
-	}
+    public Map<Integer, List<String>> getModulesOnDevice() {
+        return modulesOnDevice;
+    }
 
-	public Map<Integer, Map<Integer, List<String>>> getModulesOnPath() {
-		return modulesOnPath;
-	}
+    public void setModulesOnDevice(Map<Integer, List<String>> modulesOnDevice) {
+        this.modulesOnDevice = modulesOnDevice;
+    }
 
-	public void setModulesOnPath(Map<Integer, Map<Integer, List<String>>> modulesOnPath) {
-		this.modulesOnPath = modulesOnPath;
-	}
+    public Boolean getClusteringFeature() {
+        return clusteringFeature;
+    }
 
-	public Map<Integer, List<String>> getModulesOnDevice() {
-		return modulesOnDevice;
-	}
-
-	public void setModulesOnDevice(Map<Integer, List<String>> modulesOnDevice) {
-		this.modulesOnDevice = modulesOnDevice;
-	}
-
-	public Boolean getClusteringFeature() {
-		return clusteringFeature;
-	}
-
-	public void setClusteringFeature(Boolean clusteringFeature) {
-		this.clusteringFeature = clusteringFeature;
-	}
+    public void setClusteringFeature(Boolean clusteringFeature) {
+        this.clusteringFeature = clusteringFeature;
+    }
 
 
 }

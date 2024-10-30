@@ -30,9 +30,7 @@ import org.fog.placement.ModulePlacementEdgewards;
 import org.fog.placement.ModulePlacementMapping;
 import org.fog.policy.AppModuleAllocationPolicy;
 import org.fog.scheduler.StreamOperatorScheduler;
-import org.fog.utils.FogLinearPowerModel;
-import org.fog.utils.FogUtils;
-import org.fog.utils.TimeKeeper;
+import org.fog.utils.*;
 import org.fog.utils.distribution.DeterministicDistribution;
 
 /**
@@ -58,7 +56,7 @@ public class VRGameFog {
         Log.printLine("Starting VRGame...");
 
         try {
-            Log.disable();
+            Log.disable(); // Log 是 CloudSim 里面的日志类
             int num_user = 1;
             Calendar calendar = Calendar.getInstance();
             boolean trace_flag = false;
@@ -68,6 +66,7 @@ public class VRGameFog {
 
             String appId = "vr_game"; // identifier of the application
 
+            Logger.disabled(); // Logger 是 iFogSim 里面的日志类
             // FogBroker的作用类似于WorkflowScheduler、WorkflowPlanner
             FogBroker broker = new FogBroker("broker"); // broker的id是2
 
@@ -97,6 +96,7 @@ public class VRGameFog {
                 // if the mode of deployment is edge-ward
                 //moduleMapping.addModuleToDevice("connector", "cloud", numOfDepts*numOfMobilesPerDept); // fixing all instances of the Connector module to the Cloud
                 moduleMapping.addModuleToDevice("connector", "cloud"); // fixing all instances of the Connector module to the Cloud
+                // 只把 connector 模块放在云端，剩下的模块根据 edge-ward 放置策略来决定放置在哪一级雾设备上
                 // rest of the modules will be placed by the Edge-ward placement policy
             }
 
@@ -136,7 +136,7 @@ public class VRGameFog {
         cloud.setParentId(-1);
         FogDevice proxy = createFogDevice("proxy-server", 2800, 4000, 10000, 10000, 1, 0.0, 107.339, 83.4333); // creates the fog device Proxy Server (level=1)
         proxy.setParentId(cloud.getId()); // setting Cloud as parent of the Proxy Server
-        proxy.setUplinkLatency(100); // latency of connection from Proxy Server to the Cloud is 100 ms
+        proxy.setUplinkLatency(Parameters.proxyServerToCloudUplinkLatency); // latency of connection from Proxy Server to the Cloud is 100 ms
 
         fogDevices.add(cloud);
         fogDevices.add(proxy);
@@ -150,11 +150,11 @@ public class VRGameFog {
         FogDevice dept = createFogDevice("d-" + id, 2800, 4000, 10000, 10000, 2, 0.0, 107.339, 83.4333);
         fogDevices.add(dept);
         dept.setParentId(parentId);
-        dept.setUplinkLatency(4); // latency of connection between gateways and proxy server is 4 ms
+        dept.setUplinkLatency(Parameters.deptToproxyServerUplinkLatency); // latency of connection between gateways and proxy server is 4 ms
         for (int i = 0; i < numOfMobilesPerDept; i++) {
             String mobileId = id + "-" + i;
             FogDevice mobile = addMobile(mobileId, userId, appId, dept.getId()); // adding mobiles to the physical topology. Smartphones have been modeled as fog devices as well.
-            mobile.setUplinkLatency(2); // latency of connection between the smartphone and proxy server is 4 ms
+            mobile.setUplinkLatency(Parameters.mobileToDeptUplinkLatency); // latency of connection between the smartphone and gateway is 2 ms
             fogDevices.add(mobile);
         }
         return dept;
@@ -168,9 +168,9 @@ public class VRGameFog {
         Actuator display = new Actuator("a-" + id, userId, appId, "DISPLAY");
         actuators.add(display);
         eegSensor.setGatewayDeviceId(mobile.getId());
-        eegSensor.setLatency(6.0);  // latency of connection between EEG sensors and the parent Smartphone is 6 ms
+        eegSensor.setLatency(Parameters.sensorToMobileUplinkLatency);  // latency of connection between EEG sensors and the parent Smartphone is 6 ms
         display.setGatewayDeviceId(mobile.getId());
-        display.setLatency(1.0);  // latency of connection between Display actuator and the parent Smartphone is 1 ms
+        display.setLatency(Parameters.mobileToActuatorUplinkLatency);  // latency of connection between Display actuator and the parent Smartphone is 1 ms
         return mobile;
     }
 

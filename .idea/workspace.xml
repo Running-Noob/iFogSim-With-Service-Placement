@@ -5,21 +5,24 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="f49c35c6-62ce-495e-8ec7-ec9387e793a0" name="更改" comment="">
-      <change beforePath="$PROJECT_DIR$/src/org/fog/application/AppEdge.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/org/fog/application/AppEdge.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/org/fog/application/AppLoop.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/org/fog/application/AppLoop.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/org/fog/application/AppModule.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/org/fog/application/AppModule.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/org/fog/application/Application.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/org/fog/application/Application.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/org/fog/entities/FogDevice.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/org/fog/entities/FogDevice.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/org/fog/entities/Sensor.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/org/fog/entities/Sensor.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/org/fog/placement/ModuleMapping.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/org/fog/placement/ModuleMapping.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/org/fog/placement/Controller.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/org/fog/placement/Controller.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/org/fog/placement/ModulePlacement.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/org/fog/placement/ModulePlacement.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/org/fog/placement/ModulePlacementEdgewards.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/org/fog/placement/ModulePlacementEdgewards.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/org/fog/test/perfeval/VRGameFog.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/org/fog/test/perfeval/VRGameFog.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/org/fog/utils/distribution/Distribution.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/org/fog/utils/distribution/Distribution.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/org/fog/utils/Logger.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/org/fog/utils/Logger.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Class" />
+      </list>
+    </option>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -31,6 +34,9 @@
     <option name="stateVersion" value="1" />
   </component>
   <component name="ProjectId" id="2nMy7fmRXtvaZTIWzgtByrR95Dm" />
+  <component name="ProjectLevelVcsManager">
+    <ConfirmationsSetting value="1" id="Add" />
+  </component>
   <component name="ProjectViewState">
     <option name="showLibraryContents" value="true" />
   </component>
@@ -99,7 +105,8 @@
       <workItem from="1729856017526" duration="723000" />
       <workItem from="1729858286798" duration="3604000" />
       <workItem from="1729910206414" duration="2430000" />
-      <workItem from="1729997260401" duration="8340000" />
+      <workItem from="1729997260401" duration="28351000" />
+      <workItem from="1730292518498" duration="4181000" />
     </task>
     <servers />
   </component>
@@ -111,13 +118,13 @@
       <breakpoints>
         <line-breakpoint type="java-line">
           <url>file://$PROJECT_DIR$/src/org/fog/placement/ModulePlacementEdgewards.java</url>
-          <line>62</line>
-          <option name="timeStamp" value="11" />
+          <line>54</line>
+          <option name="timeStamp" value="31" />
         </line-breakpoint>
-        <line-breakpoint enabled="true" type="java-line">
+        <line-breakpoint type="java-line">
           <url>file://$PROJECT_DIR$/src/org/fog/placement/ModulePlacementEdgewards.java</url>
-          <line>75</line>
-          <option name="timeStamp" value="13" />
+          <line>211</line>
+          <option name="timeStamp" value="32" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

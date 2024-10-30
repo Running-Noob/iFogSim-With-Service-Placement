@@ -31,10 +31,6 @@ public class FogDevice extends PowerDatacenter {
 
     protected Map<String, Application> applicationMap;
     protected Map<String, List<String>> appToModulesMap;
-    protected Map<Integer, Double> childToLatencyMap;
-
-
-    protected Map<Integer, Integer> cloudTrafficMap;
 
     protected double lockTime;
 
@@ -48,7 +44,9 @@ public class FogDevice extends PowerDatacenter {
 
     // 当前雾设备的下一级雾设备
     protected List<Integer> childrenIds;
-
+    // Map<当前雾设备的下一级雾设备, 延迟>
+    protected Map<Integer, Double> childToLatencyMap;
+    protected Map<Integer, Integer> cloudTrafficMap;
     protected Map<Integer, List<String>> childToOperatorsMap;
 
     /**
